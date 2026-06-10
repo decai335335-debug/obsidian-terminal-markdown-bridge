@@ -19,10 +19,6 @@ function stripAnsi(text) {
   return text.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
 }
 
-function psQuote(value) {
-  return String(value).replace(/'/g, "''");
-}
-
 class VideoSubMdView extends ItemView {
   constructor(leaf, plugin) {
     super(leaf);
@@ -34,8 +30,8 @@ class VideoSubMdView extends ItemView {
   }
 
   getViewType() { return VIEW_TYPE; }
-  getDisplayText() { return 'video-sub-md 终端'; }
-  getIcon() { return 'file-terminal'; }
+  getDisplayText() { return 'video-sub-md inline terminal'; }
+  getIcon() { return 'panel-right'; }
 
   async onOpen() {
     const container = this.containerEl.children[1];
@@ -43,23 +39,26 @@ class VideoSubMdView extends ItemView {
     container.addClass('video-sub-md-view');
 
     const toolbar = container.createDiv({ cls: 'video-sub-md-toolbar' });
-    toolbar.createEl('button', { text: '内嵌运行' }, (btn) => btn.addEventListener('click', () => this.runScript()));
-    toolbar.createEl('button', { text: '停止' }, (btn) => btn.addEventListener('click', () => this.stopScript()));
-    toolbar.createEl('button', { text: '清空' }, (btn) => btn.addEventListener('click', () => this.clearOutput()));
+    toolbar.createEl('button', { text: 'Run inline' }, (btn) => btn.addEventListener('click', () => this.runScript()));
+    toolbar.createEl('button', { text: 'Stop' }, (btn) => btn.addEventListener('click', () => this.stopScript()));
+    toolbar.createEl('button', { text: 'Blank line' }, (btn) => btn.addEventListener('click', () => this.sendText('')));
+    toolbar.createEl('button', { text: 'Clear' }, (btn) => btn.addEventListener('click', () => this.clearOutput()));
 
-    this.statusEl = toolbar.createSpan({ cls: 'video-sub-md-status', text: '就绪' });
+    this.statusEl = toolbar.createSpan({ cls: 'video-sub-md-status', text: 'Ready' });
     container.createDiv({
       cls: 'video-sub-md-hint',
-      text: '伪终端面板：Enter 发送，Shift+Enter 换行。复杂 TUI/快捷键请使用外部终端。'
+      text: 'Inline pseudo terminal: type in the box below. Enter sends input, Shift+Enter inserts a new line. Use external terminal for full TTY behavior.'
     });
-    this.outputEl = container.createEl('pre', { cls: 'video-sub-md-output' });
 
-    const inputRow = container.createDiv({ cls: 'video-sub-md-input-row' });
-    this.inputEl = inputRow.createEl('textarea', {
+    this.outputEl = container.createEl('pre', { cls: 'video-sub-md-output' });
+    this.outputEl.addEventListener('click', () => this.focusInput());
+
+    const inputWrap = container.createDiv({ cls: 'video-sub-md-input-wrap' });
+    this.inputEl = inputWrap.createEl('textarea', {
       cls: 'video-sub-md-input',
-      attr: { placeholder: '输入内容；Enter 发送，Shift+Enter 换行' }
+      attr: { placeholder: 'Paste a link or type an answer here, then press Enter to send...' }
     });
-    inputRow.createEl('button', { text: '发送' }, (btn) => btn.addEventListener('click', () => this.sendInput()));
+    inputWrap.createEl('button', { text: 'Send' }, (btn) => btn.addEventListener('click', () => this.sendInput()));
 
     this.inputEl.addEventListener('keydown', (event) => {
       if (event.key === 'Enter' && !event.shiftKey) {
@@ -67,10 +66,17 @@ class VideoSubMdView extends ItemView {
         this.sendInput();
       }
     });
+
+    this.focusInput();
   }
 
   async onClose() {
     this.stopScript();
+  }
+
+  focusInput() {
+    if (!this.inputEl) return;
+    window.setTimeout(() => this.inputEl.focus(), 0);
   }
 
   append(text, cls) {
@@ -89,65 +95,87 @@ class VideoSubMdView extends ItemView {
 
   clearOutput() {
     if (this.outputEl) this.outputEl.empty();
+    this.focusInput();
   }
 
   runScript() {
     if (this.proc) {
-      new Notice('video-sub-md 正在运行');
+      new Notice('video-sub-md is already running');
+      this.focusInput();
       return;
     }
 
     const settings = this.plugin.settings;
-    this.append(`\n$ "${settings.pythonPath}" "${settings.scriptPath}"\n`, 'video-sub-md-command');
-    this.setStatus('运行中');
+    const args = ['-u', settings.scriptPath];
+    this.append(`\n$ "${settings.pythonPath}" -u "${settings.scriptPath}"\n`, 'video-sub-md-command');
+    this.setStatus('Running');
 
     try {
-      this.proc = spawn(settings.pythonPath, [settings.scriptPath], {
-        cwd: settings.projectDir,
+      this.proc = spawn(settings.pythonPath, args, {
+        cwd: settings.projectDir || undefined,
         windowsHide: true,
         env: {
           ...process.env,
           PYTHONIOENCODING: 'utf-8',
-          PYTHONUTF8: '1'
+          PYTHONUTF8: '1',
+          PYTHONUNBUFFERED: '1'
         }
       });
+      this.proc.stdin.setDefaultEncoding('utf8');
     } catch (error) {
-      this.append(`[启动失败] ${error.message}\n`, 'video-sub-md-error');
+      this.append(`[start failed] ${error.message}\n`, 'video-sub-md-error');
       this.proc = null;
-      this.setStatus('启动失败');
+      this.setStatus('Start failed');
+      this.focusInput();
       return;
     }
 
     this.proc.stdout.on('data', (data) => this.append(data.toString('utf8')));
     this.proc.stderr.on('data', (data) => this.append(data.toString('utf8'), 'video-sub-md-error'));
     this.proc.on('error', (error) => {
-      this.append(`[进程错误] ${error.message}\n`, 'video-sub-md-error');
-      this.setStatus('错误');
+      this.append(`[process error] ${error.message}\n`, 'video-sub-md-error');
+      this.setStatus('Error');
+      this.focusInput();
     });
     this.proc.on('close', (code) => {
-      this.append(`\n[进程结束] exit code ${code}\n`, code === 0 ? 'video-sub-md-ok' : 'video-sub-md-error');
+      this.append(`\n[process exited] code ${code}\n`, code === 0 ? 'video-sub-md-ok' : 'video-sub-md-error');
       this.proc = null;
-      this.setStatus('已结束');
+      this.setStatus('Exited');
+      this.focusInput();
     });
+
+    this.focusInput();
   }
 
   stopScript() {
-    if (!this.proc) return;
+    if (!this.proc) {
+      this.focusInput();
+      return;
+    }
     this.proc.kill();
     this.proc = null;
-    this.setStatus('已停止');
-    this.append('\n[已发送停止信号]\n', 'video-sub-md-error');
+    this.setStatus('Stopped');
+    this.append('\n[stop signal sent]\n', 'video-sub-md-error');
+    this.focusInput();
   }
 
   sendInput() {
-    if (!this.proc || !this.proc.stdin || this.proc.stdin.destroyed) {
-      new Notice('脚本未运行');
-      return;
-    }
+    if (!this.inputEl) return;
     const text = this.inputEl.value;
     this.inputEl.value = '';
-    this.append(`> ${text}\n`, 'video-sub-md-user-input');
-    this.proc.stdin.write(text + os.EOL);
+    this.sendText(text);
+  }
+
+  sendText(text) {
+    if (!this.proc || !this.proc.stdin || this.proc.stdin.destroyed) {
+      new Notice('Script is not running');
+      this.focusInput();
+      return;
+    }
+    const normalized = String(text).replace(/\r?\n/g, os.EOL);
+    this.append(`> ${text || '[blank line]'}\n`, 'video-sub-md-user-input');
+    this.proc.stdin.write(normalized + os.EOL);
+    this.focusInput();
   }
 }
 
@@ -163,7 +191,7 @@ class VideoSubMdSettingTab extends PluginSettingTab {
     containerEl.createEl('h2', { text: 'Video Sub MD Runner' });
 
     new Setting(containerEl)
-      .setName('Python 路径')
+      .setName('Python path')
       .addText((text) => text
         .setValue(this.plugin.settings.pythonPath)
         .onChange(async (value) => {
@@ -172,7 +200,7 @@ class VideoSubMdSettingTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl)
-      .setName('项目目录')
+      .setName('Project directory')
       .addText((text) => text
         .setValue(this.plugin.settings.projectDir)
         .onChange(async (value) => {
@@ -181,7 +209,7 @@ class VideoSubMdSettingTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl)
-      .setName('脚本路径')
+      .setName('Script path')
       .addText((text) => text
         .setValue(this.plugin.settings.scriptPath)
         .onChange(async (value) => {
@@ -190,7 +218,7 @@ class VideoSubMdSettingTab extends PluginSettingTab {
         }));
 
     new Setting(containerEl)
-      .setName('隐藏 ANSI 控制符')
+      .setName('Strip ANSI control codes')
       .addToggle((toggle) => toggle
         .setValue(this.plugin.settings.stripAnsi)
         .onChange(async (value) => {
@@ -206,28 +234,28 @@ module.exports = class VideoSubMdRunnerPlugin extends Plugin {
 
     this.registerView(VIEW_TYPE, (leaf) => new VideoSubMdView(leaf, this));
 
-    this.addRibbonIcon('terminal-square', '打开 video-sub-md 终端', () => this.openProjectTerminal());
-    this.addRibbonIcon('file-terminal', '运行 video-sub-md main.py', () => this.runExternalTerminal());
-    this.addRibbonIcon('panel-right', '内嵌运行 video-sub-md', async () => {
+    this.addRibbonIcon('terminal-square', 'Open video-sub-md terminal', () => this.openProjectTerminal());
+    this.addRibbonIcon('file-terminal', 'Run video-sub-md main.py', () => this.runExternalTerminal());
+    this.addRibbonIcon('panel-right', 'Run video-sub-md inline', async () => {
       const view = await this.activateView();
       view.runScript();
     });
 
     this.addCommand({
       id: 'open-video-sub-md-terminal',
-      name: '打开 video-sub-md 项目终端',
+      name: 'Open video-sub-md project terminal',
       callback: () => this.openProjectTerminal()
     });
 
     this.addCommand({
       id: 'run-video-sub-md-external',
-      name: '运行 video-sub-md 脚本（外部终端）',
+      name: 'Run video-sub-md script (external terminal)',
       callback: () => this.runExternalTerminal()
     });
 
     this.addCommand({
       id: 'run-video-sub-md-inline',
-      name: '运行 video-sub-md 脚本（内嵌面板）',
+      name: 'Run video-sub-md script (inline panel)',
       callback: async () => {
         const view = await this.activateView();
         view.runScript();
@@ -243,8 +271,8 @@ module.exports = class VideoSubMdRunnerPlugin extends Plugin {
 
   openProjectTerminal() {
     const project = this.settings.projectDir;
-    const cmd = `@echo off\r\nchcp 65001 > nul\r\ncd /d "${project}"\r\necho video-sub-md 项目终端已打开：${project}\r\necho.\r\ncmd /k\r\n`;
-    this.openCmdFile(cmd, 'video-sub-md-terminal.cmd', '已打开可交互项目终端');
+    const cmd = `@echo off\r\nchcp 65001 > nul\r\ncd /d "${project}"\r\necho video-sub-md project terminal: ${project}\r\necho.\r\ncmd /k\r\n`;
+    this.openCmdFile(cmd, 'video-sub-md-terminal.cmd', 'Opened interactive project terminal');
   }
 
   runExternalTerminal() {
@@ -252,7 +280,7 @@ module.exports = class VideoSubMdRunnerPlugin extends Plugin {
     const python = this.settings.pythonPath;
     const scriptPath = this.settings.scriptPath;
     const cmd = `@echo off\r\nchcp 65001 > nul\r\ncd /d "${project}"\r\n"${python}" "${scriptPath}"\r\necho.\r\npause\r\n`;
-    this.openCmdFile(cmd, 'video-sub-md-run.cmd', '已打开可交互终端并启动 main.py');
+    this.openCmdFile(cmd, 'video-sub-md-run.cmd', 'Opened interactive terminal and started main.py');
   }
 
   async openCmdFile(cmdContent, fileName, successMessage) {
@@ -261,13 +289,13 @@ module.exports = class VideoSubMdRunnerPlugin extends Plugin {
       fs.writeFileSync(cmdFile, cmdContent, 'utf8');
       const error = await shell.openPath(cmdFile);
       if (error) {
-        new Notice(`打开终端失败：${error}`);
+        new Notice(`Open terminal failed: ${error}`);
         console.error(error);
         return;
       }
       new Notice(successMessage);
     } catch (error) {
-      new Notice(`打开终端失败：${error.message}`);
+      new Notice(`Open terminal failed: ${error.message}`);
       console.error(error);
     }
   }
