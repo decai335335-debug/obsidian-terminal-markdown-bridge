@@ -107,9 +107,21 @@ Windows 适配：
 - 脚本结束后扫描当前 vault 的 `11-subtitles/_download_report_*.csv`。
 - 只读取本轮运行后生成的报告，解析 CSV 表头中的 `filepath` 列。
 - 将 `status=success` 且以 `.md` 结尾的文件路径加入 `Generated Markdown files`。
-- 新增 **Refresh files** 按钮，手动读取最近 24 小时的报告作为兜底。
+- 新增 **Refresh files** 按钮，但只读取当前运行对应的最新报告；没有运行上下文时，只读取最新一个报告。
 
 **价值**：即使终端输出没有完整 Markdown 地址，只要脚本生成了下载报告，插件仍然能实例化出真实的 Markdown 文件入口。
+
+
+### v1.4 -- 报告识别范围收紧
+
+**需求触发**：Refresh 兜底读取最近 24 小时报告时，会把其他批次 CSV 里的 Markdown 文件也加入结果区，超出了当前这次聊天/运行范围。
+
+**修复方案**：
+- 自动识别只读取本轮运行开始后生成的最新一个 `_download_report_*.csv`。
+- 如果用户手动点击 **Refresh files** 且当前有运行上下文，仍只读取当前运行对应的最新报告。
+- 如果没有运行上下文，手动刷新只读取最新一个报告，不再扫描最近 24 小时所有报告。
+
+**价值**：Generated Markdown files 只展示当前批次真正生成的文件，避免历史报告污染结果区。
 
 ---
 
@@ -124,6 +136,7 @@ Windows 适配：
 | 内嵌输出里的 Markdown 路径不能点击 | 原来输出区只创建纯文本 `span`，OSC 8 链接会被当成 ANSI 控制符清掉 | 解析 OSC 8 / Obsidian URI / `.md` 路径，渲染成可点击链接并用 `openLinkText()` 打开 | v1.1 |
 | 可点击路径在终端输出里不够明显 | 用户需要从表格/日志里找链接，发现成本高 | 新增 `Generated Markdown files` 结果区，集中展示本轮生成的 Markdown 文件并支持 Open latest | v1.2 |
 | 终端只显示文件名，结果区没有文件 | Rich 表格的真实链接可能藏在终端超链接协议里，内嵌面板拿不到完整地址 | 脚本结束后读取 `_download_report_*.csv` 的 `filepath` 列，并提供 Refresh files 兜底 | v1.3 |
+| Refresh files 混入历史 CSV 结果 | 兜底逻辑读取最近 24 小时的多个报告 | 改为只读取当前运行后的最新一个报告；无运行上下文时只读最新报告 | v1.4 |
 | Linux 插件不能直接复用 | `gnome-terminal-loader` 依赖 Linux/GNOME | 只借鉴 ribbon + terminal launcher 思路，终端实现换成 Windows 方案 | v0.2 |
 
 ---

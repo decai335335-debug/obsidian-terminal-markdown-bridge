@@ -225,7 +225,7 @@ class VideoSubMdView extends ItemView {
       added += this.addGeneratedFilesFromCsv(report);
     }
     if (includeRecentFallback) {
-      new Notice(added ? `Loaded ${added} generated file(s) from reports` : 'No generated Markdown file found in recent reports');
+      new Notice(added ? `Loaded ${added} generated file(s) from current report` : 'No generated Markdown file found in current/latest report');
     }
     this.renderGeneratedLinks();
     this.focusInput();
@@ -239,21 +239,28 @@ class VideoSubMdView extends ItemView {
     const reportDir = path.join(basePath, '11-subtitles');
     if (!fs.existsSync(reportDir)) return [];
 
-    const minTime = this.runStartedAt ? this.runStartedAt - 5000 : 0;
-    const fallbackMinTime = Date.now() - 24 * 60 * 60 * 1000;
-    const threshold = includeRecentFallback ? Math.min(minTime || Date.now(), fallbackMinTime) : minTime;
-
-    return fs.readdirSync(reportDir)
+    const reports = fs.readdirSync(reportDir)
       .filter((name) => /^_download_report_.*\.csv$/i.test(name))
       .map((name) => path.join(reportDir, name))
-      .filter((file) => {
+      .map((file) => {
         try {
-          return fs.statSync(file).mtimeMs >= threshold;
+          return { file, mtimeMs: fs.statSync(file).mtimeMs };
         } catch (error) {
-          return false;
+          return null;
         }
       })
-      .sort((a, b) => fs.statSync(a).mtimeMs - fs.statSync(b).mtimeMs);
+      .filter(Boolean)
+      .sort((a, b) => b.mtimeMs - a.mtimeMs);
+
+    if (!reports.length) return [];
+
+    if (this.runStartedAt) {
+      const minTime = this.runStartedAt - 5000;
+      const currentRunReports = reports.filter((report) => report.mtimeMs >= minTime);
+      return currentRunReports.length ? [currentRunReports[0].file] : [];
+    }
+
+    return includeRecentFallback ? [reports[0].file] : [];
   }
 
   addGeneratedFilesFromCsv(reportPath) {
