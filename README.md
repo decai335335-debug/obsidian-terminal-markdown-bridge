@@ -53,7 +53,7 @@
 | 内嵌面板运行 | 简单场景下可在 Obsidian 面板里查看输出并发送输入 |
 | 输出路径可点击 | 识别脚本输出中的 `obsidian://`、`file:///`、vault 内 `.md` 路径，点击后直接在 Obsidian 打开笔记 |
 | 生成文件结果区 | 在内嵌终端下方单独列出本轮生成的 Markdown 文件，点击文件名或 **Open latest** 即可进入笔记 |
-| CSV 报告兜底识别 | 读取当前运行生成的最新 `11-subtitles/_download_report_*.csv` 的 `filepath` 列，避免混入其他批次结果 |
+| CSV report fallback | `Refresh current` reads the current run/latest report; `Refresh 24h` scans reports from the last 24 hours when you need to recover recent results |
 | 插件设置页 | 可修改 Python 路径、项目目录、脚本路径，不需要改源码 |
 | 本地配置排除提交 | `data.json` 保存个人路径，但默认不上传到 GitHub |
 
@@ -134,7 +134,7 @@ styles.css
 4. 同时，路径会被收集到 **Generated Markdown files** 结果区。
 5. 如果终端输出只显示文件名，插件会在脚本结束后读取 `11-subtitles/_download_report_*.csv` 的 `filepath` 列，把真实 Markdown 文件补进结果区。
 6. 点击结果区里的文件名，或点击 **Open latest**，插件会优先调用 Obsidian 的 `openLinkText()` 在当前 vault 中打开对应笔记。
-7. 如果结果区没有自动出现文件，点击 **Refresh files** 手动读取当前运行对应的最新报告；没有运行上下文时，只读取最新一个报告。
+7. If the result panel is empty, click **Refresh current** to read the current run/latest report; click **Refresh 24h** to scan CSV reports from the last 24 hours.
 
 ---
 

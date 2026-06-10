@@ -1,5 +1,5 @@
 
-const { Plugin, ItemView, Notice, PluginSettingTab, Setting } = require('obsidian');
+const { Plugin, ItemView, Notice, PluginSettingTab, Setting, addIcon } = require('obsidian');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -7,6 +7,7 @@ const os = require('os');
 const { shell } = require('electron');
 
 const VIEW_TYPE = 'video-sub-md-runner-view';
+const RIBBON_ICON = 'terminal-markdown-bridge';
 
 const DEFAULT_SETTINGS = {
   pythonPath: 'python',
@@ -33,8 +34,8 @@ class VideoSubMdView extends ItemView {
   }
 
   getViewType() { return VIEW_TYPE; }
-  getDisplayText() { return 'video-sub-md inline terminal'; }
-  getIcon() { return 'panel-right'; }
+  getDisplayText() { return 'Obsidian Terminal Markdown Bridge'; }
+  getIcon() { return RIBBON_ICON; }
 
   async onOpen() {
     const container = this.containerEl.children[1];
@@ -60,7 +61,8 @@ class VideoSubMdView extends ItemView {
     const generatedHeader = generatedPanel.createDiv({ cls: 'video-sub-md-generated-header' });
     generatedHeader.createSpan({ text: 'Generated Markdown files' });
     generatedHeader.createEl('button', { text: 'Open latest' }, (btn) => btn.addEventListener('click', () => this.openLatestGeneratedLink()));
-    generatedHeader.createEl('button', { text: 'Refresh files' }, (btn) => btn.addEventListener('click', () => this.loadGeneratedFilesFromReports(true)));
+    generatedHeader.createEl('button', { text: 'Refresh current' }, (btn) => btn.addEventListener('click', () => this.loadGeneratedFilesFromReports('current', true)));
+    generatedHeader.createEl('button', { text: 'Refresh 24h' }, (btn) => btn.addEventListener('click', () => this.loadGeneratedFilesFromReports('recent24', true)));
     generatedHeader.createEl('button', { text: 'Clear files' }, (btn) => btn.addEventListener('click', () => this.clearGeneratedLinks()));
     this.generatedListEl = generatedPanel.createDiv({ cls: 'video-sub-md-generated-list' });
     this.renderGeneratedLinks();
@@ -218,20 +220,24 @@ class VideoSubMdView extends ItemView {
     this.plugin.openOutputTarget(latest.href, latest.label);
   }
 
-  loadGeneratedFilesFromReports(includeRecentFallback = false) {
-    const reports = this.findCandidateReportFiles(includeRecentFallback);
+  loadGeneratedFilesFromReports(scope = 'current', replace = false) {
+    const reports = this.findCandidateReportFiles(scope);
+    if (replace) this.generatedLinks.clear();
+
     let added = 0;
     for (const report of reports) {
       added += this.addGeneratedFilesFromCsv(report);
     }
-    if (includeRecentFallback) {
-      new Notice(added ? `Loaded ${added} generated file(s) from current report` : 'No generated Markdown file found in current/latest report');
+
+    if (replace) {
+      const label = scope === 'recent24' ? 'last 24 hours' : 'current run/latest report';
+      new Notice(added ? `Loaded ${added} generated file(s) from ${label}` : `No generated Markdown file found in ${label}`);
     }
     this.renderGeneratedLinks();
     this.focusInput();
   }
 
-  findCandidateReportFiles(includeRecentFallback) {
+  findCandidateReportFiles(scope = 'current') {
     const adapter = this.app.vault.adapter;
     const basePath = adapter && adapter.basePath ? adapter.basePath : '';
     if (!basePath) return [];
@@ -254,13 +260,18 @@ class VideoSubMdView extends ItemView {
 
     if (!reports.length) return [];
 
+    if (scope === 'recent24') {
+      const since = Date.now() - 24 * 60 * 60 * 1000;
+      return reports.filter((report) => report.mtimeMs >= since).map((report) => report.file);
+    }
+
     if (this.runStartedAt) {
       const minTime = this.runStartedAt - 5000;
       const currentRunReports = reports.filter((report) => report.mtimeMs >= minTime);
       return currentRunReports.length ? [currentRunReports[0].file] : [];
     }
 
-    return includeRecentFallback ? [reports[0].file] : [];
+    return [reports[0].file];
   }
 
   addGeneratedFilesFromCsv(reportPath) {
@@ -371,7 +382,7 @@ class VideoSubMdView extends ItemView {
     });
     this.proc.on('close', (code) => {
       this.append(`\n[process exited] code ${code}\n`, code === 0 ? 'video-sub-md-ok' : 'video-sub-md-error');
-      this.loadGeneratedFilesFromReports(false);
+      this.loadGeneratedFilesFromReports('current', false);
       this.proc = null;
       this.setStatus('Exited');
       this.focusInput();
@@ -465,11 +476,15 @@ module.exports = class VideoSubMdRunnerPlugin extends Plugin {
   async onload() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 
+    addIcon(RIBBON_ICON, `
+      <rect x="3" y="5" width="18" height="14" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"/>
+      <path d="M7 10l3 2-3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M12 15h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    `);
+
     this.registerView(VIEW_TYPE, (leaf) => new VideoSubMdView(leaf, this));
 
-    this.addRibbonIcon('terminal-square', 'Open video-sub-md terminal', () => this.openProjectTerminal());
-    this.addRibbonIcon('file-terminal', 'Run video-sub-md main.py', () => this.runExternalTerminal());
-    this.addRibbonIcon('panel-right', 'Run video-sub-md inline', async () => {
+    this.addRibbonIcon(RIBBON_ICON, 'Run Obsidian Terminal Markdown Bridge', async () => {
       const view = await this.activateView();
       view.runScript();
     });

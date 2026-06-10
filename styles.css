@@ -105,18 +105,21 @@
 .video-sub-md-generated-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex-wrap: wrap;
   font-size: var(--font-ui-small);
   font-weight: 600;
 }
 
 .video-sub-md-generated-header span {
   margin-right: auto;
+  min-width: 140px;
 }
 
 .video-sub-md-generated-header button {
-  padding: 2px 8px;
+  padding: 2px 7px;
   font-size: var(--font-ui-smaller);
+  white-space: nowrap;
 }
 
 .video-sub-md-generated-list {
