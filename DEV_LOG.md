@@ -70,6 +70,19 @@ Windows 适配：
 
 **结果：** 能弹出真实可见的命令行窗口，支持用户输入和脚本交互。
 
+
+### v1.1 -- 内嵌输出路径可点击
+
+**需求触发**：`video-sub-md` 下载字幕后会在结果中输出生成的 Markdown 文件路径。用户希望在 Obsidian 内嵌面板中点击该路径，直接打开生成的字幕笔记，而不是复制路径或依赖外部终端的 Ctrl+点击。
+
+**实现方案**：
+- 在输出渲染层解析 Rich/终端常用的 OSC 8 链接。
+- 额外识别纯文本中的 `obsidian://open?...`、`file:///...` 和 Windows 绝对 `.md` 路径。
+- 如果路径位于当前 vault 下，转换为 vault 相对路径并调用 `app.workspace.openLinkText()`。
+- 如果不是 vault 内文件，则回退到 Electron `shell.openExternal()`。
+
+**价值**：内嵌伪终端不只是显示日志，还能成为下载结果的操作面板，让“下载字幕 -> 打开 Markdown -> 继续编辑”闭环留在 Obsidian 内。
+
 ---
 
 ## 3. 踩坑记录
@@ -80,6 +93,7 @@ Windows 适配：
 | `spawn('powershell.exe')` 后看不到窗口 | Obsidian 是 GUI/Electron 进程，直接启动控制台程序不一定分配可见窗口 | 尝试 `cmd /c start` | v0.3 |
 | `cmd /c start powershell.exe` 仍不弹窗 | 子进程窗口创建在用户环境中不稳定 | 改用 `shell.openPath()` 打开 `.cmd` 文件 | v0.4 -> v1.0 |
 | 本机路径不适合公开上传 | `data.json` 和默认设置包含用户机器路径 | 将 `data.json` 加入 `.gitignore`，提供 `data.example.json` | v1.0 |
+| 内嵌输出里的 Markdown 路径不能点击 | 原来输出区只创建纯文本 `span`，OSC 8 链接会被当成 ANSI 控制符清掉 | 解析 OSC 8 / Obsidian URI / `.md` 路径，渲染成可点击链接并用 `openLinkText()` 打开 | v1.1 |
 | Linux 插件不能直接复用 | `gnome-terminal-loader` 依赖 Linux/GNOME | 只借鉴 ribbon + terminal launcher 思路，终端实现换成 Windows 方案 | v0.2 |
 
 ---

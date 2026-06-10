@@ -78,3 +78,13 @@
 .video-sub-md-ok {
   color: var(--text-success);
 }
+
+.video-sub-md-link {
+  color: var(--link-color);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.video-sub-md-link:hover {
+  color: var(--link-color-hover);
+}

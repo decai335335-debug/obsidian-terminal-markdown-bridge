@@ -81,12 +81,62 @@ class VideoSubMdView extends ItemView {
 
   append(text, cls) {
     if (!this.outputEl) return;
-    const value = this.plugin.settings.stripAnsi ? stripAnsi(text) : text;
-    const span = document.createElement('span');
-    if (cls) span.className = cls;
-    span.textContent = value;
-    this.outputEl.appendChild(span);
+    const chunks = this.parseOutputChunks(text);
+    for (const chunk of chunks) {
+      if (chunk.type === 'link') {
+        const link = document.createElement('a');
+        link.href = '#';
+        link.className = cls ? `${cls} video-sub-md-link` : 'video-sub-md-link';
+        link.textContent = this.plugin.settings.stripAnsi ? stripAnsi(chunk.label) : chunk.label;
+        link.title = chunk.href;
+        link.addEventListener('click', (event) => {
+          event.preventDefault();
+          this.plugin.openOutputTarget(chunk.href, chunk.label);
+        });
+        this.outputEl.appendChild(link);
+      } else {
+        const span = document.createElement('span');
+        if (cls) span.className = cls;
+        span.textContent = this.plugin.settings.stripAnsi ? stripAnsi(chunk.text) : chunk.text;
+        this.outputEl.appendChild(span);
+      }
+    }
     this.outputEl.scrollTop = this.outputEl.scrollHeight;
+  }
+
+  parseOutputChunks(text) {
+    const chunks = [];
+    const osc8 = /\x1b\]8;;([^\x1b]+)\x1b\\([\s\S]*?)\x1b\]8;;\x1b\\/g;
+    let last = 0;
+    let match;
+    while ((match = osc8.exec(text)) !== null) {
+      if (match.index > last) {
+        chunks.push(...this.parsePlainOutputLinks(text.slice(last, match.index)));
+      }
+      chunks.push({ type: 'link', href: match[1], label: match[2] || match[1] });
+      last = match.index + match[0].length;
+    }
+    if (last < text.length) {
+      chunks.push(...this.parsePlainOutputLinks(text.slice(last)));
+    }
+    return chunks;
+  }
+
+  parsePlainOutputLinks(text) {
+    const chunks = [];
+    const linkPattern = /(obsidian:\/\/open\?[^\s\]\)]+|file:\/\/\/[^\s\]\)]+|[A-Za-z]:[\\\/][^\r\n<>|?*"']+?\.md)/g;
+    let last = 0;
+    let match;
+    while ((match = linkPattern.exec(text)) !== null) {
+      if (match.index > last) chunks.push({ type: 'text', text: text.slice(last, match.index) });
+      const raw = match[1].replace(/[.,;，。；]+$/, '');
+      const trailing = match[1].slice(raw.length);
+      chunks.push({ type: 'link', href: raw, label: raw });
+      if (trailing) chunks.push({ type: 'text', text: trailing });
+      last = match.index + match[1].length;
+    }
+    if (last < text.length) chunks.push({ type: 'text', text: text.slice(last) });
+    return chunks;
   }
 
   setStatus(text) {
@@ -298,6 +348,54 @@ module.exports = class VideoSubMdRunnerPlugin extends Plugin {
       new Notice(`Open terminal failed: ${error.message}`);
       console.error(error);
     }
+  }
+
+  async openOutputTarget(href, label) {
+    try {
+      if (href.startsWith('obsidian://open')) {
+        const url = new URL(href);
+        const file = url.searchParams.get('file');
+        if (file) {
+          await this.openVaultPath(decodeURIComponent(file));
+          return;
+        }
+      }
+
+      if (/^[A-Za-z]:[\\/]/.test(href)) {
+        const opened = await this.openAbsoluteMarkdownPath(href);
+        if (opened) return;
+      }
+
+      if (href.startsWith('file:///')) {
+        const filePath = decodeURIComponent(href.replace(/^file:\/\/\//, '')).replace(/\//g, '\\');
+        const opened = await this.openAbsoluteMarkdownPath(filePath);
+        if (opened) return;
+      }
+
+      await shell.openExternal(href);
+    } catch (error) {
+      new Notice(`Open link failed: ${error.message}`);
+      console.error(error);
+    }
+  }
+
+  async openAbsoluteMarkdownPath(filePath) {
+    const normalizedFile = filePath.replace(/\\/g, '/');
+    const adapter = this.app.vault.adapter;
+    const basePath = adapter && adapter.basePath ? adapter.basePath.replace(/\\/g, '/') : '';
+    if (basePath && normalizedFile.toLowerCase().startsWith(basePath.toLowerCase() + '/')) {
+      let relPath = normalizedFile.slice(basePath.length + 1);
+      await this.openVaultPath(relPath);
+      return true;
+    }
+    return false;
+  }
+
+  async openVaultPath(relPath) {
+    let cleanPath = relPath.replace(/\\/g, '/').replace(/^\/+/, '');
+    if (!cleanPath.toLowerCase().endsWith('.md')) cleanPath += '.md';
+    await this.app.workspace.openLinkText(cleanPath, '', false);
+    new Notice(`Opened ${cleanPath}`);
   }
 
   async activateView() {
