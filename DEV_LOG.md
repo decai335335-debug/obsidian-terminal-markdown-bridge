@@ -1,4 +1,4 @@
-# Video Sub MD Runner 开发日志
+# Obsidian Terminal Markdown Bridge 开发日志
 
 记录这个 Obsidian 本地插件从需求到可用版本的演进过程，包括原始需求、关键技术选择、踩坑记录和后续路线。
 
@@ -123,6 +123,21 @@ Windows 适配：
 
 **价值**：Generated Markdown files 只展示当前批次真正生成的文件，避免历史报告污染结果区。
 
+
+### v1.5 -- 项目命名升级
+
+**需求触发**：插件已经从 `video-sub-md` 的专用启动器，演进为连接 Obsidian、交互终端和生成 Markdown 文件的通用桥接工具。原名 `Video Sub MD Runner` 过于绑定单一项目，无法准确表达当前能力。
+
+**命名决策**：采用 **Obsidian Terminal Markdown Bridge**。
+
+| 关键词 | 含义 |
+|------|------|
+| Obsidian | 插件入口、结果打开和最终编辑都发生在 Obsidian 内 |
+| Terminal | 保留外部终端和内嵌伪终端两种脚本交互方式 |
+| Markdown Bridge | 将脚本生成的 Markdown 文件识别并带回 vault 结果区 |
+
+**兼容性处理**：保留插件 `id` 为 `video-sub-md-runner`，避免本地 Obsidian 启用状态和 `data.json` 配置失效；只更新展示名称、README、DEV_LOG 和 GitHub 仓库名。
+
 ---
 
 ## 3. 踩坑记录
@@ -137,6 +152,7 @@ Windows 适配：
 | 可点击路径在终端输出里不够明显 | 用户需要从表格/日志里找链接，发现成本高 | 新增 `Generated Markdown files` 结果区，集中展示本轮生成的 Markdown 文件并支持 Open latest | v1.2 |
 | 终端只显示文件名，结果区没有文件 | Rich 表格的真实链接可能藏在终端超链接协议里，内嵌面板拿不到完整地址 | 脚本结束后读取 `_download_report_*.csv` 的 `filepath` 列，并提供 Refresh files 兜底 | v1.3 |
 | Refresh files 混入历史 CSV 结果 | 兜底逻辑读取最近 24 小时的多个报告 | 改为只读取当前运行后的最新一个报告；无运行上下文时只读最新报告 | v1.4 |
+| 项目名过于绑定 video-sub-md | 插件能力已扩展到终端脚本和 Markdown 结果桥接 | 展示名和仓库名改为 Obsidian Terminal Markdown Bridge，保留插件 ID 保证兼容 | v1.5 |
 | Linux 插件不能直接复用 | `gnome-terminal-loader` 依赖 Linux/GNOME | 只借鉴 ribbon + terminal launcher 思路，终端实现换成 Windows 方案 | v0.2 |
 
 ---

@@ -1,9 +1,9 @@
 {
   "id": "video-sub-md-runner",
-  "name": "Video Sub MD Runner",
+  "name": "Obsidian Terminal Markdown Bridge",
   "version": "1.0.0",
   "minAppVersion": "1.5.0",
-  "description": "Adds Obsidian ribbon actions to open a project terminal or run a configured Python script in a visible interactive terminal.",
+  "description": "Bridge Obsidian, interactive terminal scripts, and generated Markdown files with ribbon actions and clickable result panels.",
   "author": "Codex",
   "isDesktopOnly": true
 }

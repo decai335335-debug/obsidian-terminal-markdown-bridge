@@ -1,12 +1,21 @@
-# Obsidian Video Sub MD Runner
+# Obsidian Terminal Markdown Bridge
 
-在 Obsidian 左侧图标栏一键打开项目终端，或直接启动指定 Python 脚本；适合把 `video-sub-md` 这类需要命令行交互的工具接进笔记工作流。
+在 Obsidian 左侧图标栏一键打开交互终端、运行本地脚本，并把脚本生成的 Markdown 文件自动收集成可点击入口。适合把 `video-sub-md` 这类 CLI 工具接进笔记工作流。
 
 ---
 
 ## 1. 一句话定位
 
-这是一个 Obsidian 桌面端本地插件：在左侧 ribbon 增加终端入口，一键进入项目目录并运行可配置的 Python 脚本，解决“写笔记时还要切到外部目录手动开终端”的割裂感。
+这是一个 Obsidian 桌面端本地插件：在左侧 ribbon 增加终端和 Markdown 结果入口，一键运行可配置的本地脚本，并把生成的 Markdown 文件带回 Obsidian。
+
+
+### 关于名称
+
+项目名 **Obsidian Terminal Markdown Bridge** 表达三个核心能力：
+
+- **Obsidian**：入口和最终阅读/编辑都发生在 Obsidian 内。
+- **Terminal**：脚本仍然可以保留命令行交互能力，复杂交互可走外部终端，简单交互可走内嵌伪终端。
+- **Markdown Bridge**：脚本生成的 Markdown 会被识别、收集，并以可点击结果区带回当前 vault。
 
 ---
 
@@ -65,8 +74,10 @@
 2. 将项目文件夹放到你的 vault 插件目录：
 
 ```text
-<你的 vault>/.obsidian/plugins/video-sub-md-runner/
+<你的 vault>/.obsidian/plugins/obsidian-terminal-markdown-bridge/
 ```
+> 兼容说明：插件内部 `id` 仍保留为 `video-sub-md-runner`，已有本地安装可以继续使用旧文件夹名；新安装时使用仓库名文件夹更直观。
+
 
 3. 确认目录里至少包含：
 
@@ -77,7 +88,7 @@ styles.css
 ```
 
 4. 打开 Obsidian，进入 **设置 → 社区插件**。
-5. 点击 **重新加载插件**，启用 **Video Sub MD Runner**。
+5. 点击 **重新加载插件**，启用 **Obsidian Terminal Markdown Bridge**。
 6. 进入插件设置，填写：
    - **Python 路径**：例如 `C:\Path\To\Python\python.exe`
    - **项目目录**：例如 `E:/Projects/ai/video-sub-md`
@@ -152,7 +163,7 @@ styles.css
 ## 7. 文件结构
 
 ```text
-video-sub-md-runner/
+obsidian-terminal-markdown-bridge/
 ├── manifest.json       # Obsidian 插件清单
 ├── main.js             # 插件主逻辑：图标、命令、终端启动、设置页
 ├── styles.css          # 内嵌面板样式
