@@ -1,0 +1,11 @@
+# Local Obsidian/user settings
+data.json
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+*.log
+
+# Dependency/build output if this plugin is later converted to TypeScript
+node_modules/
+dist/

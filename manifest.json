@@ -1,0 +1,9 @@
+{
+  "id": "video-sub-md-runner",
+  "name": "Video Sub MD Runner",
+  "version": "1.0.0",
+  "minAppVersion": "1.5.0",
+  "description": "Adds Obsidian ribbon actions to open a project terminal or run a configured Python script in a visible interactive terminal.",
+  "author": "Codex",
+  "isDesktopOnly": true
+}
