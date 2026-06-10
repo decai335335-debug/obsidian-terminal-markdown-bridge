@@ -152,6 +152,17 @@ Windows 适配：
 
 **Value**: The default result panel stays focused on the current conversation/run, while still giving the user a deliberate recovery path for recent Markdown files.
 
+
+### v1.7 -- Visible Ribbon Terminal Icon
+
+**Request**: The custom terminal SVG looked too small in Obsidian's left ribbon and was hard to see.
+
+**Changes**:
+- Replaced the custom `terminal-markdown-bridge` SVG with Obsidian's built-in `terminal-square` icon.
+- Kept a single ribbon entry, but now it uses the same visual scale and stroke weight as the other Obsidian sidebar icons.
+
+**Value**: The entry remains terminal-shaped while matching the size and readability of the rest of the left sidebar.
+
 ---
 
 ## 3. 踩坑记录
@@ -169,6 +180,7 @@ Windows 适配：
 | 项目名过于绑定 video-sub-md | 插件能力已扩展到终端脚本和 Markdown 结果桥接 | 展示名和仓库名改为 Obsidian Terminal Markdown Bridge，保留插件 ID 保证兼容 | v1.5 |
 | Need to recover recent Markdown files | Current-scope refresh is intentionally strict | Added Refresh 24h to scan CSV reports from the last 24 hours | v1.6 |
 | Three ribbon icons appeared | Earlier versions kept external terminal, external script, and inline panel entries at once | Kept one terminal-style ribbon icon for a cleaner sidebar | v1.6 |
+| Ribbon icon was too small | Custom SVG used a conservative 24px drawing that looked tiny in Obsidian ribbon rendering | Switched to built-in `terminal-square` for native scale and stroke weight | v1.7 |
 | Linux 插件不能直接复用 | `gnome-terminal-loader` 依赖 Linux/GNOME | 只借鉴 ribbon + terminal launcher 思路，终端实现换成 Windows 方案 | v0.2 |
 
 ---

@@ -1,5 +1,5 @@
 
-const { Plugin, ItemView, Notice, PluginSettingTab, Setting, addIcon } = require('obsidian');
+const { Plugin, ItemView, Notice, PluginSettingTab, Setting } = require('obsidian');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -7,7 +7,7 @@ const os = require('os');
 const { shell } = require('electron');
 
 const VIEW_TYPE = 'video-sub-md-runner-view';
-const RIBBON_ICON = 'terminal-markdown-bridge';
+const RIBBON_ICON = 'terminal-square';
 
 const DEFAULT_SETTINGS = {
   pythonPath: 'python',
@@ -475,12 +475,6 @@ class VideoSubMdSettingTab extends PluginSettingTab {
 module.exports = class VideoSubMdRunnerPlugin extends Plugin {
   async onload() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-
-    addIcon(RIBBON_ICON, `
-      <rect x="3" y="5" width="18" height="14" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"/>
-      <path d="M7 10l3 2-3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M12 15h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-    `);
 
     this.registerView(VIEW_TYPE, (leaf) => new VideoSubMdView(leaf, this));
 
